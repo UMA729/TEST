@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class StrokeController : MonoBehaviour
 {
@@ -9,86 +9,154 @@ public class StrokeController : MonoBehaviour
     [Range(0.1f, 0.5f)]
     [SerializeField] float lineWidth;
 
-    [SerializeField]PhysicsMaterial2D bounceMaterial;
-    GameObject lineObj;         //線のオブジェクトとなる変数
-    LineRenderer lineRenderer;  //線の描画に必要なコンポーネント
-    List<Vector2> linePoints;   //線の座標
+    [SerializeField] PhysicsMaterial2D bounceMaterial;
+    [SerializeField] float lifeTime = 3f;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    [Header("Line Limit")]
+    [SerializeField] float maxLength = 5f;
+    float currentLength = 0f;
+
+    [Header("UI")]
+    [SerializeField] Image gauge;
+
+    class TimedPoint
     {
-        //Listの初期化
-        linePoints = new List<Vector2>();
+        public Vector2 position;
+        public float time;
 
+        public TimedPoint(Vector2 pos, float t)
+        {
+            position = pos;
+            time = t;
+        }
     }
 
-    // Update is called once per frame
+    class LineData
+    {
+        public GameObject obj;
+        public LineRenderer renderer;
+        public EdgeCollider2D collider;
+        public List<TimedPoint> points = new List<TimedPoint>();
+    }
+
+    List<LineData> lines = new List<LineData>();
+    LineData currentLine;
+
     void Update()
     {
-        //左クリックされたとき
         if (Input.GetMouseButtonDown(0))
         {
-            //線となるオブジェクト作成
-            _addLineObject();
+            _createLine();
+            currentLength = 0f; // リセット
         }
-        //左クリックされ続けているとき
+
         if (Input.GetMouseButton(0))
         {
-            //lineRendererの更新処理
-            _addPositionDataToLineRenderer();
+            _addPoint();
+        }
+
+        _updateAllLines();
+        _updateGauge();
+    }
+
+    private void _createLine()
+    {
+        GameObject obj = new GameObject("Line");
+        obj.tag = "Ground";
+
+        LineRenderer lr = obj.AddComponent<LineRenderer>();
+        EdgeCollider2D col = obj.AddComponent<EdgeCollider2D>();
+        col.sharedMaterial = bounceMaterial;
+
+        obj.transform.SetParent(transform);
+
+        lr.material = lineMaterial;
+        lr.material.color = lineColor;
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+        lr.positionCount = 0;
+
+        currentLine = new LineData
+        {
+            obj = obj,
+            renderer = lr,
+            collider = col
+        };
+
+        lines.Add(currentLine);
+    }
+
+    private void _addPoint()
+    {
+        if (currentLine == null) return;
+
+        Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, 1f);
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+
+        // 最初の点
+        if (currentLine.points.Count == 0)
+        {
+            currentLine.points.Add(new TimedPoint(worldPos, Time.time));
+            return;
+        }
+
+        Vector2 lastPos = currentLine.points[currentLine.points.Count - 1].position;
+        float dist = Vector2.Distance(lastPos, worldPos);
+
+        // 制限チェック
+        if (currentLength + dist > maxLength)
+        {
+            return;
+        }
+
+        currentLength += dist;
+
+        currentLine.points.Add(new TimedPoint(worldPos, Time.time));
+    }
+
+    private void _updateGauge()
+    {
+        if (gauge != null)
+        {
+            gauge.fillAmount = currentLength / maxLength;
         }
     }
 
-    //ゲームオブジェクト作成関数
-    private void _addLineObject()
+    private void _updateAllLines()
     {
-        lineObj = new GameObject();             //ゲームオブジェクト作成
-        lineObj.name = "Line";                  //オブジェクトの名前を"Line"にする
-        lineObj.tag = "Ground";
-        lineObj.AddComponent<LineRenderer>();   //LineRendererを追加
-        lineObj.AddComponent<EdgeCollider2D>(); //EdgeCollider2Dを追加
+        float now = Time.time;
+        bool isDrawing = Input.GetMouseButton(0);
 
-        EdgeCollider2D col = lineObj.GetComponent<EdgeCollider2D>();
-        col.sharedMaterial = bounceMaterial;
+        for (int l = lines.Count - 1; l >= 0; l--)
+        {
+            var line = lines[l];
 
-        lineObj.transform.SetParent(transform); //オブジェクトを自身(スクリプトをアタッチしているオブジェクト)の子に設定
+            line.points.RemoveAll(p => now - p.time > lifeTime);
 
-        linePoints = new List<Vector2>();
+            if (line.points.Count < 2 && !isDrawing)
+            {
+                Destroy(line.obj);
+                lines.RemoveAt(l);
+                continue;
+            }
 
-        //lineRenderer初期化処理
-        _initRenderer();
-    }
+            line.renderer.positionCount = line.points.Count;
 
-    //LineRenderer初期化関数
-    private void _initRenderer()
-    {
-        lineRenderer = lineObj.GetComponent<LineRenderer>(); //LineRendererを取得
-        lineRenderer.positionCount = 0;                      //ポジションカウントリセット
-        lineRenderer.material = lineMaterial;                //マテリアルを設定
-        lineRenderer.material.color = lineColor;             //マテリアルの色を設定
-        lineRenderer.startWidth = lineWidth;                 //始点の太さを設定
-        lineRenderer.endWidth = lineWidth;                   //終点の太さを設定
-    }
-    
-    //lineRenderer更新処理
-    private void _addPositionDataToLineRenderer()
-    {
-          /*座標に関する処理*/
-        //マウス座標取得
-        Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, 1.0f);
-        //ワールド座標へ変換
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
-        
-        /*LineRendererに関する処理*/
-        //LineRendererのポイントを増やす
-        lineRenderer.positionCount += 1;
-        //LineRendererのポジションを設定
-        lineRenderer.SetPosition(lineRenderer.positionCount - 1, worldPos);
-        
-        /*EdgeCollider2Dに関する処理*/
-        //ワールド座標をリストに追加
-        linePoints.Add(worldPos);
-        //EdgeCollider2Dのポイントを設定
-        lineObj.GetComponent<EdgeCollider2D>().SetPoints(linePoints);
+            for (int i = 0; i < line.points.Count; i++)
+            {
+                line.renderer.SetPosition(i, line.points[i].position);
+            }
+
+            if (line.points.Count >= 2)
+            {
+                List<Vector2> pts = new List<Vector2>();
+                foreach (var p in line.points)
+                {
+                    pts.Add(p.position);
+                }
+
+                line.collider.SetPoints(pts);
+            }
+        }
     }
 }
