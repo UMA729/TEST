@@ -16,6 +16,9 @@ public class StrokeController : MonoBehaviour
     [SerializeField] float maxLength = 5f;
     float currentLength = 0f;
 
+    float gauge_amount = 1;
+    int current_gauge = 1;
+
     [Header("UI")]
     [SerializeField] Image gauge;
 
@@ -116,10 +119,7 @@ public class StrokeController : MonoBehaviour
 
     private void _updateGauge()
     {
-        if (gauge != null)
-        {
-            gauge.fillAmount = currentLength / maxLength;
-        }
+        gauge_amount -= gauge.fillAmount;
     }
 
     private void _updateAllLines()
