@@ -16,8 +16,10 @@ public class StrokeController : MonoBehaviour
     [SerializeField] float maxLength = 5f;
     float currentLength = 0f;
 
-    float gauge_amount = 1;
-    int current_gauge = 1;
+    [SerializeField] float maxGauge = 100f;
+    [SerializeField] float gaugeDecreaseSpeed = 20f;
+
+    float currentGauge;
 
     [Header("UI")]
     [SerializeField] Image gauge;
@@ -40,10 +42,18 @@ public class StrokeController : MonoBehaviour
         public LineRenderer renderer;
         public EdgeCollider2D collider;
         public List<TimedPoint> points = new List<TimedPoint>();
+
+
     }
 
     List<LineData> lines = new List<LineData>();
     LineData currentLine;
+
+    private void Start()
+    {
+        currentGauge = maxGauge;
+        gauge.fillAmount = currentGauge / maxGauge;
+    }
 
     void Update()
     {
@@ -56,10 +66,10 @@ public class StrokeController : MonoBehaviour
         if (Input.GetMouseButton(0))
         {
             _addPoint();
+            _updateGauge();
         }
 
         _updateAllLines();
-        _updateGauge();
     }
 
     private void _createLine()
@@ -91,7 +101,12 @@ public class StrokeController : MonoBehaviour
 
     private void _addPoint()
     {
+
         if (currentLine == null) return;
+        if (currentGauge <= 0f)
+        {
+            return;
+        }
 
         Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, 1f);
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
@@ -119,10 +134,16 @@ public class StrokeController : MonoBehaviour
 
     private void _updateGauge()
     {
-        gauge_amount -= gauge.fillAmount;
+        if (currentGauge <= 0f) return;
+
+        currentGauge -= gaugeDecreaseSpeed * Time.deltaTime;
+
+        currentGauge = Mathf.Clamp(currentGauge, 0f, maxGauge);
+
+        gauge.fillAmount = currentGauge / maxGauge;
     }
 
-    private void _updateAllLines()
+    private void _updateAllLines() 
     {
         float now = Time.time;
         bool isDrawing = Input.GetMouseButton(0);

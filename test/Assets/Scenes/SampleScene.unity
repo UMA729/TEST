@@ -691,6 +691,8 @@ MonoBehaviour:
   bounceMaterial: {fileID: 6200000, guid: c14df4f0ffaf82542bc6fcdf3611e4e7, type: 2}
   lifeTime: 3
   maxLength: 20
+  maxGauge: 20
+  gaugeDecreaseSpeed: 20
   gauge: {fileID: 1433905082}
 --- !u!4 &1158777448
 Transform:
