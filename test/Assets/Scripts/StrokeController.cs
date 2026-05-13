@@ -151,7 +151,7 @@ public class StrokeController : MonoBehaviour
         for (int l = lines.Count - 1; l >= 0; l--)
         {
             var line = lines[l];
-
+        
             line.points.RemoveAll(p => now - p.time > lifeTime);
 
             if (line.points.Count < 2 && !isDrawing)
@@ -179,5 +179,16 @@ public class StrokeController : MonoBehaviour
                 line.collider.SetPoints(pts);
             }
         }
+    }
+
+    private void _recoverGauge()
+    {
+        if (currentGauge >= maxGauge) return;
+
+        currentGauge += 2 * Time.deltaTime;
+
+        currentGauge = Mathf.Clamp(currentGauge, 0f, maxGauge);
+
+        gauge.fillAmount = currentGauge / maxGauge;
     }
 }
