@@ -12,14 +12,15 @@ public class StrokeController : MonoBehaviour
     [SerializeField] PhysicsMaterial2D bounceMaterial;
     [SerializeField] float lifeTime = 3f;
 
-    [Header("Line Limit")]
-    [SerializeField] float maxLength = 5f;
+    //[Header("Line Limit")]
+    //[SerializeField] float maxLength = 5f;
     float currentLength = 0f;
 
     [SerializeField] float maxGauge = 100f;
-    [SerializeField] float gaugeDecreaseSpeed = 20f;
+    [SerializeField] float gaugeCostPerUnit = 10f;
 
     float currentGauge;
+    float tmp_gauge = 0;
 
     [Header("UI")]
     [SerializeField] Image gauge;
@@ -66,10 +67,11 @@ public class StrokeController : MonoBehaviour
         if (Input.GetMouseButton(0))
         {
             _addPoint();
-            _updateGauge();
+            //_updateGauge();
         }
 
         _updateAllLines();
+        _recoverGauge();
     }
 
     private void _createLine()
@@ -101,47 +103,74 @@ public class StrokeController : MonoBehaviour
 
     private void _addPoint()
     {
-
         if (currentLine == null) return;
-        if (currentGauge <= 0f)
-        {
-            return;
-        }
+        if (currentGauge <= 0f) return;
 
-        Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, 1f);
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+        Vector3 mousePos = new Vector3(
+            Input.mousePosition.x,
+            Input.mousePosition.y,
+            1f
+        );
+
+        Vector3 worldPos =
+            Camera.main.ScreenToWorldPoint(mousePos);
 
         // 最初の点
         if (currentLine.points.Count == 0)
         {
-            currentLine.points.Add(new TimedPoint(worldPos, Time.time));
+            currentLine.points.Add(
+                new TimedPoint(worldPos, Time.time)
+            );
+
             return;
         }
 
-        Vector2 lastPos = currentLine.points[currentLine.points.Count - 1].position;
-        float dist = Vector2.Distance(lastPos, worldPos);
+        Vector2 lastPos =
+            currentLine.points[currentLine.points.Count - 1].position;
 
-        // 制限チェック
-        if (currentLength + dist > maxLength)
+        float dist =
+            Vector2.Distance(lastPos, worldPos);
+
+        // 距離に応じたゲージ消費量
+        float gaugeCost =
+            dist * gaugeCostPerUnit;
+
+        // ゲージ不足なら描けない
+        if (currentGauge < gaugeCost)
         {
             return;
         }
 
+        // ゲージ消費
+        currentGauge -= gaugeCost;
+
+        currentGauge = Mathf.Clamp(
+            currentGauge,
+            0f,
+            maxGauge
+        );
+
+        gauge.fillAmount =
+            currentGauge / maxGauge;
+
+        // 線追加
         currentLength += dist;
 
-        currentLine.points.Add(new TimedPoint(worldPos, Time.time));
+        currentLine.points.Add(
+            new TimedPoint(worldPos, Time.time)
+        );
     }
 
-    private void _updateGauge()
-    {
-        if (currentGauge <= 0f) return;
+    //private void _updateGauge()
+    //{
+    //    if (currentGauge <= 0f) return;
 
-        currentGauge -= gaugeDecreaseSpeed * Time.deltaTime;
+    //    currentGauge -= gaugeDecreaseSpeed * Time.deltaTime;
 
-        currentGauge = Mathf.Clamp(currentGauge, 0f, maxGauge);
+    //    currentGauge = Mathf.Clamp(currentGauge, 0f, maxGauge);
 
-        gauge.fillAmount = currentGauge / maxGauge;
-    }
+    //    gauge.fillAmount = currentGauge / maxGauge;
+    //}
 
     private void _updateAllLines() 
     {
